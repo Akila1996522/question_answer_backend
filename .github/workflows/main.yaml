@@ -38,15 +38,33 @@ jobs:
     needs: build
     steps:
     - uses: actions/checkout@v4
-
-    - name: Setup GitVersion
-      uses: gittools/actions/gitversion/setup@v3
       with:
-        versionSpec: '6.x'
+        fetch-depth: 0
 
-    - name: Determine version
-      id: gitversion
-      uses: gittools/actions/gitversion/execute@v3
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Install GitVersion
+      run: dotnet tool install --global GitVersion.Tool --version 6.7.0
+
+    - name: Add .NET tools to PATH
+      run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+    - name: Execute GitVersion
+      run: dotnet-gitversion /output json /config GitVersion.yml > gitversion.json
+
+    - name: Read version values
+      run: |
+        SEMVER=$(jq -r .SemVer gitversion.json)
+        MAJOR_MINOR_PATCH=$(jq -r .MajorMinorPatch gitversion.json)
+        OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+        BRANCH=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | tr '/' '-' | tr '_' '-')
+        echo "SEMVER=$SEMVER" >> $GITHUB_ENV
+        echo "MAJOR_MINOR_PATCH=$MAJOR_MINOR_PATCH" >> $GITHUB_ENV
+
+
 
     - name: Log in to GHCR
       run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
