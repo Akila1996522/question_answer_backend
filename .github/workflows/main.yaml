@@ -25,18 +25,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Build files
-      script: |
-        dotnet publish .\question_answer.csproj -c Release -o .\publish
+      run: dotnet publish .\question_answer.csproj -c Release -o .\publish
 
   push:
     runs-on: ubuntu-latest
     steps:
     - name: Create docker Image
-      script: |
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/question-answer-website-backend:latest .
+      run: docker build -t ${{ secrets.DOCKER_USERNAME }}/question-answer-website-backend:latest .
     - name: Login to Github Registry
-      script: |
-        docker login -h ghcr.io -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+      run: docker login -h ghcr.io -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
     - name: Push image to Github Registry
       run: docker push ${{ secrets.DOCKER_USERNAME }}/question-answer-website-backend:latest
   
