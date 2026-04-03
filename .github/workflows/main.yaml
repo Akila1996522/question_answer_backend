@@ -141,7 +141,7 @@ jobs:
               -u '${{ github.actor }}' \
               -p '${{ secrets.GITHUB_TOKEN }}' \
               -l '/var/www/${{ vars.DEPLOY_PATH }}' \
-              -v '${{ needs.push.outputs.version_tag }}' \
+              -v '${{ env.VERSION_TAG }}' \
               -r 'ghcr.io' \
               -e '${{ needs.push.outputs.environment_name }}' \
               -x '${{ needs.push.outputs.image_latest }}'
