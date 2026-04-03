@@ -47,7 +47,10 @@ jobs:
         dotnet-version: '8.0.x'
 
     - name: Install GitVersion
-      run: dotnet tool install --global GitVersion.Tool --version 6.7.0
+      run: |
+        mkdir -p /tmp/dotnet-tools
+        dotnet tool install GitVersion.Tool --tool-path /tmp/dotnet-tools --version 6.7.0
+        echo "/tmp/dotnet-tools" >> $GITHUB_PATH
 
     - name: Add .NET tools to PATH
       run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
