@@ -87,7 +87,20 @@ jobs:
         echo "OWNER=$OWNER" >> $GITHUB_ENV
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
+    - name: Read version values
+      run: |
+        SEMVER=$(jq -r .SemVer gitversion.json)
+        OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+        echo "VERSION_TAG=$SEMVER" >> $GITHUB_ENV
+        echo "OWNER=$OWNER" >> $GITHUB_ENV
 
+    - name: Extract and sanitize branch name
+      id: branch
+      run: |
+        BRANCH_NAME="${GITHUB_REF##*/}"
+        SAFE_BRANCH=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | tr '/' '-' | tr '_' '-')
+        echo "BRANCH_NAME=$SAFE_BRANCH" >> $GITHUB_ENV
+        echo "branch_name=$SAFE_BRANCH" >> $GITHUB_OUTPUT
 
     - name: Log in to GHCR
       run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
@@ -127,10 +140,9 @@ jobs:
 
       - name: Show deploy values
         run: |
-          echo "VERSION=${{ steps.metadata.outputs.VERSION_TAG }}"
-          echo "IMAGE=${{ steps.metadata.outputs.IMAGE_NAME }}"
-          echo "IMAGE_LATEST=${{ steps.metadata.outputs.IMAGE_LATEST }}"
-          echo "BRANCH=${{ steps.metadata.outputs.BRANCH_NAME }}"
+          echo "VERSION=${{ needs.push.outputs.version_tag }}"
+          echo "IMAGE=${{ needs.push.outputs.image_name }}"
+          echo "BRANCH=${{ needs.push.outputs.branch_name }}"
 
       - name: Deploy to remote server
         run: |
@@ -142,8 +154,8 @@ jobs:
               -u '${{ github.actor }}' \
               -p '${{ secrets.GITHUB_TOKEN }}' \
               -l '/var/www/${{ vars.DEPLOY_PATH }}' \
-              -v '${{ steps.metadata.outputs.VERSION_TAG }}' \
+              -v '${{ needs.push.outputs.version_tag }}' \
               -r 'ghcr.io' \
               -e '${{ env.CI_ENVIRONMENT_NAME }}' \
-              -x '${{ steps.metadata.outputs.IMAGE_NAME }}'
+              -x '${{ needs.push.outputs.image_name }}'
           "
