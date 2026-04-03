@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Npgsql;
 using question_answer.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -135,13 +136,31 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
+var autoMigrateSetting = Environment.GetEnvironmentVariable("DB__AUTO_MIGRATE")
+    ?? builder.Configuration["Db:AutoMigrate"];
+var autoMigrateEnabled = string.Equals(autoMigrateSetting, "true", StringComparison.OrdinalIgnoreCase)
+    || (string.IsNullOrWhiteSpace(autoMigrateSetting) && builder.Environment.IsDevelopment());
+
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<AppDbContext>();
     
-    // Apply migrations automatically
-    await context.Database.MigrateAsync();
+    if (autoMigrateEnabled)
+    {
+        try
+        {
+            // Apply migrations automatically when enabled.
+            await context.Database.MigrateAsync();
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42501")
+        {
+            throw new InvalidOperationException(
+                "Database user does not have permission to run migrations (SQLSTATE 42501). " +
+                "Grant CREATE/USAGE on schema or set DB__AUTO_MIGRATE=false and run migrations separately.",
+                ex);
+        }
+    }
 
     var seeder = services.GetRequiredService<question_answer.Application.Services.DataSeeder>();
     await seeder.SeedSuperAdminAsync();
