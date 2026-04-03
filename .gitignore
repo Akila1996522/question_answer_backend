@@ -1,7 +1,6 @@
 publish/
 bin/
 obj/
-*.txt
 *.md
 *.log
 *.zip

@@ -11,6 +11,9 @@ permissions:
   contents: read
   packages: write
 
+env:
+  CI_ENVIRONMENT_NAME: main
+
 jobs:
   unit-test:
     runs-on: ubuntu-latest
@@ -42,84 +45,131 @@ jobs:
   push:
     runs-on: ubuntu-latest
     needs: build
+    outputs:
+      version_tag: ${{ steps.meta.outputs.version_tag }}
+      image_name: ${{ steps.meta.outputs.image_name }}
+      image_latest: ${{ steps.meta.outputs.image_latest }}
+      branch_name: ${{ steps.meta.outputs.branch_name }}
+      environment_name: ${{ steps.meta.outputs.environment_name }}
+      repo_owner_lower: ${{ steps.meta.outputs.repo_owner_lower }}
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Download publish artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: publish-output
-        path: ./publish
+      - name: Download publish artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: publish-output
+          path: ./publish
 
-    - name: Set up .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
 
-    - name: Install GitVersion
-      run: |
-        mkdir -p /tmp/dotnet-tools
-        # Run from /tmp to avoid "multiple project files" error in the current repository root
-        (cd /tmp && dotnet tool install GitVersion.Tool --tool-path /tmp/dotnet-tools --version 6.7.0)
-        echo "/tmp/dotnet-tools" >> $GITHUB_PATH
+      - name: Install GitVersion
+        run: |
+          mkdir -p /tmp/dotnet-tools
+          (cd /tmp && dotnet tool install GitVersion.Tool --tool-path /tmp/dotnet-tools --version 6.7.0)
+          echo "/tmp/dotnet-tools" >> $GITHUB_PATH
 
-    - name: Add .NET tools to PATH
-      run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+      - name: Execute GitVersion
+        run: gitversion /output json /config GitVersion.yml > gitversion.json
 
-    - name: Execute GitVersion
-      run: dotnet-gitversion . /output json /config GitVersion.yml > gitversion.json
+      - name: Prepare metadata
+        id: meta
+        run: |
+          SEMVER=$(jq -r .SemVer gitversion.json)
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          BRANCH_NAME=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | tr '/' '-' | tr '_' '-')
 
-    - name: Read version values
-      run: |
-        SEMVER=$(jq -r .SemVer gitversion.json)
-        MAJOR_MINOR_PATCH=$(jq -r .MajorMinorPatch gitversion.json)
-        OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-        BRANCH_NAME=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | tr '/' '-' | tr '_' '-')
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            ENVIRONMENT_NAME="production"
+          elif [ "${GITHUB_REF_NAME}" = "develop" ]; then
+            ENVIRONMENT_NAME="staging"
+          else
+            ENVIRONMENT_NAME="dev"
+          fi
 
-        echo "SEMVER=$SEMVER" >> $GITHUB_ENV
-        echo "MAJOR_MINOR_PATCH=$MAJOR_MINOR_PATCH" >> $GITHUB_ENV
-        echo "VERSION_TAG=$SEMVER" >> $GITHUB_ENV
-        echo "OWNER=$OWNER" >> $GITHUB_ENV
-        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          IMAGE_NAME="ghcr.io/${OWNER}/question-answer-backend-${BRANCH_NAME}:${SEMVER}"
+          IMAGE_LATEST="ghcr.io/${OWNER}/question-answer-backend-${BRANCH_NAME}:latest"
 
+          echo "version_tag=${SEMVER}" >> $GITHUB_OUTPUT
+          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "image_latest=${IMAGE_LATEST}" >> $GITHUB_OUTPUT
+          echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          echo "environment_name=${ENVIRONMENT_NAME}" >> $GITHUB_OUTPUT
+          echo "repo_owner_lower=${OWNER}" >> $GITHUB_OUTPUT
 
+          echo "SEMVER=${SEMVER}" >> $GITHUB_ENV
+          echo "OWNER=${OWNER}" >> $GITHUB_ENV
+          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+          echo "ENVIRONMENT_NAME=${ENVIRONMENT_NAME}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+          echo "IMAGE_LATEST=${IMAGE_LATEST}" >> $GITHUB_ENV
 
-    - name: Log in to GHCR
-      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Show metadata
+        run: |
+          echo "SEMVER=$SEMVER"
+          echo "OWNER=$OWNER"
+          echo "BRANCH_NAME=$BRANCH_NAME"
+          echo "ENVIRONMENT_NAME=$ENVIRONMENT_NAME"
+          echo "IMAGE_NAME=$IMAGE_NAME"
+          echo "IMAGE_LATEST=$IMAGE_LATEST"
+          ls -la
+          ls -la publish
 
-    - name: Extract and sanitize branch name
-      run: |
-        BRANCH_NAME="${GITHUB_REF##*/}"
-        SAFE_BRANCH=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | tr '/' '-' | tr '_' '-' )
-        echo "BRANCH_NAME=$SAFE_BRANCH" >> $GITHUB_ENV
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-    - name: Build image
-      run: |
-        IMAGE_NAME="ghcr.io/$OWNER/question-answer-backend-$BRANCH_NAME:$VERSION_TAG"
-        echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
-        echo "IMAGE_NAME=$IMAGE_NAME"
-        docker build -t "$IMAGE_NAME" .
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t "$IMAGE_NAME" \
+            -t "$IMAGE_LATEST" \
+            .
 
-    - name: Push image
-      run: docker push $IMAGE_NAME
+      - name: Push version tag
+        run: docker push "$IMAGE_NAME"
+
+      - name: Push latest tag
+        run: docker push "$IMAGE_LATEST"
   
   deploy:
     runs-on: ubuntu-latest
     needs: push
+    if: github.event_name != 'pull_request'
     steps:
-    - name: Deploy to remote server
-      run: |
-        echo "Deploying to ${{ env.CI_ENVIRONMENT_NAME }} environment"
-            cd /var/www/
+      - name: Install ssh tools
+        run: sudo apt-get update && sudo apt-get install -y openssh-client sshpass
+
+      - name: Write SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.REMOTE_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.REMOTE_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Show deploy values
+        run: |
+          echo "VERSION=${{ needs.push.outputs.version_tag }}"
+          echo "IMAGE=${{ needs.push.outputs.image_name }}"
+          echo "IMAGE_LATEST=${{ needs.push.outputs.image_latest }}"
+          echo "BRANCH=${{ needs.push.outputs.branch_name }}"
+          echo "ENVIRONMENT=${{ needs.push.outputs.environment_name }}"
+
+      - name: Deploy to remote server
+        run: |
+          ssh -i ~/.ssh/id_rsa "${{ secrets.REMOTE_USERNAME }}@${{ secrets.REMOTE_HOST }}" "
+            cd /var/www/ &&
             ./${{ vars.DEPLOY_SCRIPT }} \
-              -a "${{ vars.CONTAINER_TAG }}-api-${{ env.CI_ENVIRONMENT_NAME }}" \
-              -w "${{ vars.CONTAINER_TAG }}-web-${{ env.CI_ENVIRONMENT_NAME }}" \
-              -u "${{ github.actor }}" \
-              -p "${{ secrets.GITHUB_TOKEN }}" \
-              -l "/var/www/${{ vars.DEPLOY_PATH }}" \
-              -v "latest" \
-              -r "ghcr.io" \
-              -e "${{ env.CI_ENVIRONMENT_NAME }}" \
-              -x "ghcr.io/${{ env.REPO_LOWER }}-${{ env.CI_ENVIRONMENT_NAME }}:latest"
+              -a '${{ vars.CONTAINER_TAG }}-api-${{ needs.push.outputs.environment_name }}' \
+              -w '${{ vars.CONTAINER_TAG }}-web-${{ needs.push.outputs.environment_name }}' \
+              -u '${{ github.actor }}' \
+              -p '${{ secrets.GITHUB_TOKEN }}' \
+              -l '/var/www/${{ vars.DEPLOY_PATH }}' \
+              -v '${{ needs.push.outputs.version_tag }}' \
+              -r 'ghcr.io' \
+              -e '${{ needs.push.outputs.environment_name }}' \
+              -x '${{ needs.push.outputs.image_latest }}'
+          "
