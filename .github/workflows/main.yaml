@@ -102,7 +102,8 @@ jobs:
       run: |
         IMAGE_NAME="ghcr.io/$OWNER/question-answer-backend-$BRANCH_NAME:$VERSION_TAG"
         echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
-        echo "IMAGE_NAME=$IMAGE_NAME"
+        echo "VERSION_TAG=$VERSION_TAG"  >> GITHUB_OUTPUT 
+        echo "IMAGE_NAME=$IMAGE_NAME" >> GITHUB_OUTPUT
         docker build -t "$IMAGE_NAME" .
 
     - name: Push image
@@ -141,8 +142,8 @@ jobs:
               -u '${{ github.actor }}' \
               -p '${{ secrets.GITHUB_TOKEN }}' \
               -l '/var/www/${{ vars.DEPLOY_PATH }}' \
-              -v '${{ env.VERSION_TAG }}' \
+              -v '${{ GITHUB_OUTPUT.VERSION_TAG }}' \
               -r 'ghcr.io' \
               -e '${{ env.CI_ENVIRONMENT_NAME }}' \
-              -x '${{ env.IMAGE_LATEST }}'
+              -x '${{ GITHUB_OUTPUT.IMAGE_NAME }}'
           "
