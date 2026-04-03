@@ -127,11 +127,10 @@ jobs:
 
       - name: Show deploy values
         run: |
-          echo "VERSION=${{ env.VERSION_TAG }}"
-          echo "IMAGE=${{ env.IMAGE_NAME }}"
-          echo "IMAGE_LATEST=${{ env.IMAGE_LATEST }}"
-          echo "BRANCH=${{ env.BRANCH_NAME }}"
-          echo "ENVIRONMENT=${{ env.CI_ENVIRONMENT_NAME }}"
+          echo "VERSION=${{ steps.metadata.outputs.VERSION_TAG }}"
+          echo "IMAGE=${{ steps.metadata.outputs.IMAGE_NAME }}"
+          echo "IMAGE_LATEST=${{ steps.metadata.outputs.IMAGE_LATEST }}"
+          echo "BRANCH=${{ steps.metadata.outputs.BRANCH_NAME }}"
 
       - name: Deploy to remote server
         run: |
