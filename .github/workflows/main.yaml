@@ -41,5 +41,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Deploy to remote server
-      script: |
-        sshpass -p ${{ secrets.REMOTE_PASSWORD }} ssh ${{ secrets.REMOTE_USERNAME }}@${{ secrets.REMOTE_HOST }} "docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}"
+      run: sshpass -p ${{ secrets.REMOTE_PASSWORD }} ssh ${{ secrets.REMOTE_USERNAME }}@${{ secrets.REMOTE_HOST }} "docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}"
