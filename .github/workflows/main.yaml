@@ -45,6 +45,10 @@ jobs:
   push:
     runs-on: ubuntu-latest
     needs: build
+    outputs:
+      version_tag: ${{ steps.metadata.outputs.version_tag }}
+      image_name: ${{ steps.metadata.outputs.image_name }}
+      branch_name: ${{ steps.branch.outputs.branch_name }}
     steps:
     - uses: actions/checkout@v4
       with:
