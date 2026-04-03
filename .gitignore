@@ -1,0 +1,13 @@
+publish/
+bin/
+obj/
+*.txt
+*.md
+*.log
+*.zip
+.env
+.env.example
+.env.production
+.env.development
+.env.test
+.env.local

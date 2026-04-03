@@ -1,0 +1,48 @@
+name: Build and Push Docker Image for Question Answer Website Backend
+
+on:
+  push:
+    branches: [ "main" ]
+  pull:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Run tests
+      run: dotnet test question_answer.Unittest.csproj --logger "console;verbosity=normal"
+  
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Build files
+      script: |
+        dotnet publish .\question_answer.csproj -c Release -o .\publish
+
+  push:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Create docker Image
+      script: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/question-answer-website-backend:latest .
+    - name: Login to Github Registry
+      script: |
+        docker login -h ghcr.io -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+    - name: Push image to Github Registry
+      run: docker push ${{ secrets.DOCKER_USERNAME }}/question-answer-website-backend:latest
+  
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Deploy to remote server
+      script: |
+        sshpass -p ${{ secrets.REMOTE_PASSWORD }} ssh ${{ secrets.REMOTE_USERNAME }}@${{ secrets.REMOTE_HOST }} "docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}"
