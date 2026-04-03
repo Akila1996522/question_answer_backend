@@ -1,0 +1,13 @@
+mode: ContinuousDeployment
+
+major-version-bump-message: '^.+!|BREAKING CHANGE:'
+minor-version-bump-message: '^feat(\(.+\))?:'
+patch-version-bump-message: '^(fix|perf|refactor)(\(.+\))?:'
+
+branches:
+  main:
+    increment: Patch
+  develop:
+    increment: Minor
+  feature:
+    increment: Minor
