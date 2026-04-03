@@ -49,14 +49,15 @@ jobs:
     - name: Install GitVersion
       run: |
         mkdir -p /tmp/dotnet-tools
-        dotnet tool install GitVersion.Tool --tool-path /tmp/dotnet-tools --version 6.7.0
+        # Run from /tmp to avoid "multiple project files" error in the current repository root
+        (cd /tmp && dotnet tool install GitVersion.Tool --tool-path /tmp/dotnet-tools --version 6.7.0)
         echo "/tmp/dotnet-tools" >> $GITHUB_PATH
 
     - name: Add .NET tools to PATH
       run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
     - name: Execute GitVersion
-      run: dotnet-gitversion /output json /config GitVersion.yml > gitversion.json
+      run: dotnet-gitversion . /output json /config GitVersion.yml > gitversion.json
 
     - name: Read version values
       run: |
@@ -66,6 +67,7 @@ jobs:
         BRANCH=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | tr '/' '-' | tr '_' '-')
         echo "SEMVER=$SEMVER" >> $GITHUB_ENV
         echo "MAJOR_MINOR_PATCH=$MAJOR_MINOR_PATCH" >> $GITHUB_ENV
+        echo "VERSION_TAG=$SEMVER" >> $GITHUB_ENV
 
 
 
