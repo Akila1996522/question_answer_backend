@@ -4,10 +4,10 @@ RUN useradd -m appuser
 
 WORKDIR /app
 
-COPY publish .
+COPY publish/ .
 
 RUN chown -R appuser:appuser /app
 
 USER appuser
 
-ENTRYPOINT ["dotnet", "publish/question_answer.dll"]
+ENTRYPOINT ["dotnet", "question_answer.dll"]
