@@ -31,7 +31,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build files
-      run: dotnet publish ./question_answer.csproj -c Release -o ./publish
+      run: dotnet publish ./question_answer.csproj -c Release -o ./publish && ls -alt && pwd
 
   push:
     runs-on: ubuntu-latest
