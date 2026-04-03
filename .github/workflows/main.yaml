@@ -97,7 +97,8 @@ jobs:
 
     - name: Build image
       run: |
-        echo "IMAGE_NAME=ghcr.io/$OWNER/question-answer-backend-$BRANCH_NAME:$VERSION_TAG" >> $GITHUB_ENV
+        IMAGE_NAME=ghcr.io/$OWNER/question-answer-backend-$BRANCH_NAME:$VERSION_TAG" >> $GITHUB_ENV
+        echo "IMAGE_NAME=$IMAGE_NAME
         docker build -t $IMAGE_NAME .
 
     - name: Push image
