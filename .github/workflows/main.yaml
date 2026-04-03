@@ -7,6 +7,10 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   unit-test:
     runs-on: ubuntu-latest
@@ -33,12 +37,34 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-    - name: Create docker Image
-      run: docker build -t ${{ secrets.DOCKER_USERNAME }}/question-answer-website-backend:latest .
-    - name: Login to Github Registry
-      run: docker login -h ghcr.io -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-    - name: Push image to Github Registry
-      run: docker push ${{ secrets.DOCKER_USERNAME }}/question-answer-website-backend:latest
+    - uses: actions/checkout@v4
+
+    - name: Setup GitVersion
+      uses: gittools/actions/gitversion/setup@v3
+      with:
+        versionSpec: '6.x'
+
+    - name: Determine version
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v3
+
+    - name: Log in to GHCR
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+    - name: Extract and sanitize branch name
+      run: |
+        BRANCH_NAME="${GITHUB_REF##*/}"
+        SAFE_BRANCH=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | tr '/' '-' | tr '_' '-' )
+        echo "BRANCH_NAME=$SAFE_BRANCH" >> $GITHUB_ENV
+
+    - name: Build image
+      run: |
+        OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+        echo "IMAGE_NAME=ghcr.io/$OWNER/question-answer-backend-$BRANCH_NAME:$VERSION_TAG" >> $GITHUB_ENV
+        docker build -t ghcr.io/$OWNER/question-answer-backend-$BRANCH_NAME:$VERSION_TAG .
+
+    - name: Push image
+      run: docker push ghcr.io/$OWNER/question-answer-backend-$BRANCH_NAME:$VERSION_TAG
   
   deploy:
     runs-on: ubuntu-latest
