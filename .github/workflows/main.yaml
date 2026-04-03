@@ -76,10 +76,13 @@ jobs:
         SEMVER=$(jq -r .SemVer gitversion.json)
         MAJOR_MINOR_PATCH=$(jq -r .MajorMinorPatch gitversion.json)
         OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-        BRANCH=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | tr '/' '-' | tr '_' '-')
+        BRANCH_NAME=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | tr '/' '-' | tr '_' '-')
+
         echo "SEMVER=$SEMVER" >> $GITHUB_ENV
         echo "MAJOR_MINOR_PATCH=$MAJOR_MINOR_PATCH" >> $GITHUB_ENV
         echo "VERSION_TAG=$SEMVER" >> $GITHUB_ENV
+        echo "OWNER=$OWNER" >> $GITHUB_ENV
+        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
 
 
@@ -94,12 +97,11 @@ jobs:
 
     - name: Build image
       run: |
-        OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
         echo "IMAGE_NAME=ghcr.io/$OWNER/question-answer-backend-$BRANCH_NAME:$VERSION_TAG" >> $GITHUB_ENV
-        docker build -t ghcr.io/$OWNER/question-answer-backend-$BRANCH_NAME:$VERSION_TAG .
+        docker build -t $IMAGE_NAME .
 
     - name: Push image
-      run: docker push ghcr.io/$OWNER/question-answer-backend-$BRANCH_NAME:$VERSION_TAG
+      run: docker push $IMAGE_NAME
   
   deploy:
     runs-on: ubuntu-latest
