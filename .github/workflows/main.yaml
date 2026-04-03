@@ -110,4 +110,16 @@ jobs:
     needs: push
     steps:
     - name: Deploy to remote server
-      run: ssh -i ${{ secrets.REMOTE_PRIVATE_KEY }} ${{ secrets.REMOTE_USERNAME }}@${{ secrets.REMOTE_HOST }} "cd /var/www/ && ${{ vars.DEPLOY_SCRIPT }} -v ${{needs.push.outputs.VERSION_TAG}} -n ${{needs.push.outputs.IMAGE_NAME}} -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} -l ${{ vars.DEPLOY_PATH }} -r ${{ vars.REGISTRY }} -e ${{ env.CI_ENVIRONMENT_NAME }} -k ${{ vars.CONTAINER_TAG }}/ai/${{ env.CI_ENVIRONMENT_NAME }} -z ${{ vars.REGISTRY_PATH }}/ai/${{ env.CI_ENVIRONMENT_NAME }}"
+      run: |
+        echo "Deploying to ${{ env.CI_ENVIRONMENT_NAME }} environment"
+            cd /var/www/
+            ./${{ vars.DEPLOY_SCRIPT }} \
+              -a "${{ vars.CONTAINER_TAG }}-api-${{ env.CI_ENVIRONMENT_NAME }}" \
+              -w "${{ vars.CONTAINER_TAG }}-web-${{ env.CI_ENVIRONMENT_NAME }}" \
+              -u "${{ github.actor }}" \
+              -p "${{ secrets.GITHUB_TOKEN }}" \
+              -l "/var/www/${{ vars.DEPLOY_PATH }}" \
+              -v "latest" \
+              -r "ghcr.io" \
+              -e "${{ env.CI_ENVIRONMENT_NAME }}" \
+              -x "ghcr.io/${{ env.REPO_LOWER }}-${{ env.CI_ENVIRONMENT_NAME }}:latest"
