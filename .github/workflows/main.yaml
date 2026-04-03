@@ -16,19 +16,22 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
-    - name: Restore dependencies
-      run: dotnet restore
+    - name: Restore app dependencies
+      run: dotnet restore question_answer.csproj
     - name: Run tests
       run: dotnet test question_answer.Unittest.csproj --logger "console;verbosity=normal"
   
   build:
     runs-on: ubuntu-latest
+    needs: unit-test
     steps:
+    - uses: actions/checkout@v4
     - name: Build files
       run: dotnet publish .\question_answer.csproj -c Release -o .\publish
 
   push:
     runs-on: ubuntu-latest
+    needs: build
     steps:
     - name: Create docker Image
       run: docker build -t ${{ secrets.DOCKER_USERNAME }}/question-answer-website-backend:latest .
@@ -39,6 +42,7 @@ jobs:
   
   deploy:
     runs-on: ubuntu-latest
+    needs: push
     steps:
     - name: Deploy to remote server
       run: sshpass -p ${{ secrets.REMOTE_PASSWORD }} ssh ${{ secrets.REMOTE_USERNAME }}@${{ secrets.REMOTE_HOST }} "docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}"
