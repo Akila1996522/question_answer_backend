@@ -74,38 +74,18 @@ jobs:
     - name: Execute GitVersion
       run: dotnet-gitversion . /output json /config GitVersion.yml > gitversion.json
 
-    - name: Prepare metadata
-      id: meta
+    - name: Read version values
       run: |
         SEMVER=$(jq -r .SemVer gitversion.json)
+        MAJOR_MINOR_PATCH=$(jq -r .MajorMinorPatch gitversion.json)
         OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
         BRANCH_NAME=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | tr '/' '-' | tr '_' '-')
 
-        if [ "${GITHUB_REF_NAME}" = "main" ]; then
-          ENVIRONMENT_NAME="production"
-        elif [ "${GITHUB_REF_NAME}" = "develop" ]; then
-          ENVIRONMENT_NAME="staging"
-        else
-          ENVIRONMENT_NAME="dev"
-        fi
-
-        IMAGE_NAME="ghcr.io/${OWNER}/question-answer-backend-${BRANCH_NAME}:${SEMVER}"
-        IMAGE_LATEST="ghcr.io/${OWNER}/question-answer-backend-${BRANCH_NAME}:latest"
-
-        echo "version_tag=${SEMVER}" >> $GITHUB_OUTPUT
-        echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
-        echo "image_latest=${IMAGE_LATEST}" >> $GITHUB_OUTPUT
-        echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
-        echo "environment_name=${ENVIRONMENT_NAME}" >> $GITHUB_OUTPUT
-        echo "repo_owner_lower=${OWNER}" >> $GITHUB_OUTPUT
-
-    - name: Show metadata
-      run: |
-        echo "VERSION=${{ steps.meta.outputs.version_tag }}"
-        echo "IMAGE=${{ steps.meta.outputs.image_name }}"
-        echo "IMAGE_LATEST=${{ steps.meta.outputs.image_latest }}"
-        echo "BRANCH=${{ steps.meta.outputs.branch_name }}"
-        echo "ENVIRONMENT=${{ steps.meta.outputs.environment_name }}"
+        echo "SEMVER=$SEMVER" >> $GITHUB_ENV
+        echo "MAJOR_MINOR_PATCH=$MAJOR_MINOR_PATCH" >> $GITHUB_ENV
+        echo "VERSION_TAG=$SEMVER" >> $GITHUB_ENV
+        echo "OWNER=$OWNER" >> $GITHUB_ENV
+        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
 
 
