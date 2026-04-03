@@ -103,7 +103,6 @@ jobs:
         IMAGE_NAME="ghcr.io/$OWNER/question-answer-backend-$BRANCH_NAME:$VERSION_TAG"
         echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
         echo "IMAGE_NAME=$IMAGE_NAME"
-        CI_ENVIRONMENT_NAME = $BRANCH_NAME >> GITHUB_ENV
         docker build -t "$IMAGE_NAME" .
 
     - name: Push image
