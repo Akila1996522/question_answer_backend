@@ -110,4 +110,4 @@ jobs:
     needs: push
     steps:
     - name: Deploy to remote server
-      run: ssh -i ${{ secrets.REMOTE_PRIVATE_KEY }} ${{ secrets.REMOTE_USERNAME }}@${{ secrets.REMOTE_HOST }} "cd /var/www/ && ${{ vars.DEPLOY_SCRIPT }} -v ${{ env.VERSION_TAG }} -n ${{ env.IMAGE_NAME }} -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} -l ${{ vars.DEPLOY_PATH }} -r ${{ vars.REGISTRY }} -e ${{ env.CI_ENVIRONMENT_NAME }} -k ${{ vars.CONTAINER_TAG }}/ai/${{ env.CI_ENVIRONMENT_NAME }} -z ${{ vars.REGISTRY_PATH }}/ai/${{ env.CI_ENVIRONMENT_NAME }}"
+      run: ssh -i ${{ secrets.REMOTE_PRIVATE_KEY }} ${{ secrets.REMOTE_USERNAME }}@${{ secrets.REMOTE_HOST }} "cd /var/www/ && ${{ vars.DEPLOY_SCRIPT }} -v $VERSION_TAG -n $IMAGE_NAME -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} -l ${{ vars.DEPLOY_PATH }} -r ${{ vars.REGISTRY }} -e ${{ env.CI_ENVIRONMENT_NAME }} -k ${{ vars.CONTAINER_TAG }}/ai/${{ env.CI_ENVIRONMENT_NAME }} -z ${{ vars.REGISTRY_PATH }}/ai/${{ env.CI_ENVIRONMENT_NAME }}"
