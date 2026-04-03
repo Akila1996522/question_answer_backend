@@ -9,9 +9,23 @@ using question_answer.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load .env from backend root for deployed environments where env vars
+// are provided via file instead of host-level configuration.
+var envFilePath = Path.Combine(builder.Environment.ContentRootPath, "..", ".env");
+if (File.Exists(envFilePath))
+{
+    DotNetEnv.Env.Load(envFilePath);
+}
+
 // Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-                       ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (builder.Environment.IsProduction() && string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Missing database connection string. Set ConnectionStrings__DefaultConnection in .env or environment variables.");
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -123,8 +137,14 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var seeder = scope.ServiceProvider.GetRequiredService<question_answer.Application.Services.DataSeeder>();
-    seeder.SeedSuperAdminAsync().Wait();
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<AppDbContext>();
+    
+    // Apply migrations automatically
+    await context.Database.MigrateAsync();
+
+    var seeder = services.GetRequiredService<question_answer.Application.Services.DataSeeder>();
+    await seeder.SeedSuperAdminAsync();
 }
 
 // Configure the HTTP request pipeline.

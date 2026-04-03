@@ -14,11 +14,11 @@ public class EmailService : IEmailService
 
     public async Task SendEmailAsync(string to, string subject, string body, bool isHtml = true)
     {
-        var host = _config["Email:Host"] ?? Environment.GetEnvironmentVariable("EMAIL_HOST") ?? string.Empty;
-        var portStr = _config["Email:Port"] ?? Environment.GetEnvironmentVariable("EMAIL_PORT") ?? "587";
-        var user = _config["Email:User"] ?? Environment.GetEnvironmentVariable("EMAIL_USER") ?? string.Empty;
-        var pass = _config["Email:Pass"] ?? Environment.GetEnvironmentVariable("EMAIL_PASS") ?? string.Empty;
-        var from = _config["Email:From"] ?? Environment.GetEnvironmentVariable("EMAIL_FROM") ?? user;
+        var host = _config["Email:Host"];
+        var portStr = _config["Email:Port"] ?? "587";
+        var user = _config["Email:User"];
+        var pass = _config["Email:Pass"];
+        var from = _config["Email:From"] ?? user;
 
         if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pass))
         {
